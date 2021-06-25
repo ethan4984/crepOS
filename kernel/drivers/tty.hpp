@@ -90,6 +90,8 @@ private:
     char *char_grid;
 };
 
+void ps2_keyboard(regs *regs_cur);
+
 inline lib::map<ssize_t, tty> tty_list;
 inline ssize_t current_tty;
 

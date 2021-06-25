@@ -99,6 +99,52 @@ void tty::scroll() {
     draw_cursor();
 }
 
+void ps2_keyboard([[maybe_unused]] regs *regs_cur) {
+    static char keymap[] = {    ' ', ' ', '1', '2', '3',  '4', '5', '6',  '7', '8', '9', '0',
+                                '-', '=', '\b', '\t', 'q',  'w', 'e', 'r',  't', 'y', 'u', 'i',
+                                'o', 'p', '[', ']', ' ',  ' ', 'a', 's',  'd', 'f', 'g', 'h',
+                                'j', 'k', 'l', ';', '\'', '`', ' ', '\\', 'z', 'x', 'c', 'v',
+                                'b', 'n', 'm', ',', '.',  '/', ' ', ' ',  ' ', ' '
+                           };
+
+    static char cap_keymap[] = {    ' ', ' ', '!', '@', '#', '$', '%', '^',  '&', '*', '(', ')',
+                                    '_', '+', '\b', '\t', 'Q', 'W', 'E', 'R',  'T', 'Y', 'U', 'I',
+                                    'O', 'P', '{', '}', ' ',  ' ', 'A', 'S',  'D', 'F', 'G', 'H',
+                                    'J', 'K', 'L', ':', '\'', '~', ' ', '\\', 'Z', 'X', 'C', 'V',
+                                    'B', 'N', 'M', '<', '>',  '?', ' ', ' ',  ' ', ' '
+                              };
+
+    static bool upkey = false;
+
+    uint8_t keycode = inb(0x60);
+
+    switch(keycode) {
+        case 0xaa: // left shift release
+            upkey = false;
+            break;
+        case 0x2a: // left shift press
+            upkey = true;
+            break;
+        case 0xf: // tab
+            tty_list[current_tty].putchar('\t');
+            break;
+        case 0xe: // backspace
+            tty_list[current_tty].putchar('\b');
+            break;
+        case 0x1c: // enter
+            tty_list[current_tty].putchar('\n');
+            break;
+        default:
+            if(keycode <= 128) {
+                if(upkey) {
+                    tty_list[current_tty].putchar(cap_keymap[keycode]);
+                } else {
+                    tty_list[current_tty].putchar(keymap[keycode]);
+                }
+            } 
+    }
+}
+
 void tty::putchar(char c) {
     switch(c) {
         case '\t':
@@ -181,7 +227,9 @@ tty::tty(screen &sc, uint8_t *font, size_t font_height, size_t font_width) :
     current_tty = tty_cnt;
 
     tty_ioctl *ioctl = new tty_ioctl(*this);
-    vfs::node new_node(lib::string("/dev/tty") + tty_cnt++, ioctl);
+    tty_list[tty_cnt++] = *this; 
+
+    vfs::node new_node(lib::string("/dev/tty") + tty_cnt, ioctl);
 }
 
 }

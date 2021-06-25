@@ -1,4 +1,5 @@
 #include <drivers/nvme/nvme.hpp>
+#include <drivers/tty.hpp>
 #include <sched/smp.hpp>
 #include <sched/scheduler.hpp>
 #include <int/apic.hpp>
@@ -21,7 +22,7 @@ Func *const func_array<Func>::data[] = {
     disr, disr, disr, disr, disr, disr, disr, disr, 
     disr, disr, disr, disr, disr, disr, disr, disr,
     disr, disr, disr, disr, disr, disr, disr, disr, // 32
-    sched::reschedule, disr, disr, disr, disr, disr, disr, disr, 
+    sched::reschedule, tty::ps2_keyboard, disr, disr, disr, disr, disr, disr, 
     disr, disr, disr, disr, disr, disr, disr, disr, 
     disr, disr, disr, disr, disr, disr, disr, disr, 
     disr, disr, disr, disr, disr, disr, disr, disr, // 64
