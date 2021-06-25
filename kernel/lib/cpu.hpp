@@ -185,4 +185,8 @@ inline const char *exception_messages[] = { "Divide by zero",
                                             "FPU error"
                                          };
 
+void cpu_init_features();
+void set_errno(size_t errno);
+size_t get_errno();
+
 #endif

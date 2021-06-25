@@ -32,6 +32,8 @@ static void core_bootstrap(size_t core_index) {
 
     vmm::set_pat();
 
+    cpu_init_features();
+
     for(;;)
         asm ("pause");
 }

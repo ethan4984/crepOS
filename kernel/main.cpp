@@ -79,6 +79,7 @@ extern "C" int main(size_t stivale_phys) {
         print("[ACPI] rsdt found at {x}\n", reinterpret_cast<size_t>(rsdt_ptr));
     }
 
+    cpu_init_features();
     init_hpet();
 
     apic::init();
