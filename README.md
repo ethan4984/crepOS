@@ -5,7 +5,7 @@ rockOS is a simple kernel that strives to be unix-like
 # Features
 
 - PMM/VMM (4/5 level paging)
-- XAPIC/2XAPIC
+- XAPIC/X2APIC
 - IDT/GDT/TSS
 - EXT2
 - VFS
