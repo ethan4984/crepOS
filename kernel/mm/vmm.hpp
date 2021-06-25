@@ -12,6 +12,24 @@ inline size_t high_vma = 0xffff800000000000;
 inline size_t kernel_high_vma = 0xffffffff80000000;
 inline size_t page_size = 0x1000;
 
+constexpr size_t uc = 0x0;
+constexpr size_t wc = 0x1;
+constexpr size_t wt = 0x4;
+constexpr size_t wp = 0x5;
+constexpr size_t wb = 0x6;
+constexpr size_t ucm = 0x7;
+
+constexpr size_t pa_wb = 0x0;
+constexpr size_t pa_uc = 0x1;
+constexpr size_t pa_wc = 0x2;
+constexpr size_t pa_wt = 0x3;
+constexpr size_t pa_wp = 0x4;
+constexpr size_t pa_ucm = 0x5;
+
+constexpr size_t pat_msr = 0x277;
+
+ssize_t set_pat();
+
 class pmle {
 public:
     explicit pmle(uint64_t *entry) : entry(entry) { }
@@ -51,6 +69,12 @@ public:
     void set_global(bool bit) { set_bit(flags_g(), bit); }
     void set_pat(bool bit) { set_bit(flags_pat(), bit); }
     void set_no_exec(bool bit) { set_bit(flags_nx(), bit); }
+
+    void set_pa(ssize_t pa_index) {
+        set_pat(bm_test(&pa_index, 2));
+        set_cache_disabled(bm_test(&pa_index, 1));
+        set_write_through(bm_test(&pa_index, 0));
+    }
 
     uint64_t get_base() { return *entry & ~(0xfff); }
 protected:
@@ -157,11 +181,11 @@ struct pmlx_table {
     explicit pmlx_table(uint64_t *highest) : highest_raw(highest), lock(0) { }
     explicit pmlx_table() : highest_raw(0), lock(0) { } 
 
-    virtual void map_range(uint64_t vaddr, size_t cnt, size_t flags) = 0;
+    virtual void map_range(uint64_t vaddr, size_t cnt, size_t flags, ssize_t pa) = 0;
     virtual void unmap_range(uint64_t vaddr, size_t cnt) = 0;
 
-    virtual void map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0) = 0;
-    virtual void map_page(uint64_t vaddr, uint64_t flags) = 0;
+    virtual void map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0, ssize_t pa) = 0;
+    virtual void map_page(uint64_t vaddr, uint64_t flags, ssize_t pa) = 0;
     virtual void unmap_page(uint64_t vaddr) = 0;
 
     void init() {
@@ -176,11 +200,11 @@ struct pml4_table : pmlx_table {
     pml4_table(uint64_t *highest) : pmlx_table(highest) { } 
     pml4_table() : pmlx_table() { } 
 
-    void map_range(uint64_t vaddr, size_t cnt, size_t flags);
+    void map_range(uint64_t vaddr, size_t cnt, size_t flags, ssize_t pa);
     void unmap_range(uint64_t vaddr, size_t cnt);
 
-    void map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0);
-    void map_page(uint64_t vaddr, uint64_t flags);
+    void map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0, ssize_t pa);
+    void map_page(uint64_t vaddr, uint64_t flags, ssize_t pa);
     void unmap_page(uint64_t vaddr);
 
     class virtual_address {
@@ -190,7 +214,7 @@ struct pml4_table : pmlx_table {
         virtual_address() : pml4_raw(0) { }
         ~virtual_address() { delete _pml4e; delete _pml3e; delete _pml2e; delete _pml1e; }
 
-        void map(uint64_t pml4_flags, uint64_t pml3_flags, uint64_t pml2_flags, uint64_t pml1_flags);
+        void map(uint64_t pml4_flags, uint64_t pml3_flags, uint64_t pml2_flags, uint64_t pml1_flags, ssize_t pa);
         uint64_t unmap();
 
         void compute_indices() {
@@ -226,11 +250,11 @@ struct pml5_table : pmlx_table {
     pml5_table(uint64_t *highest) : pmlx_table(highest) { } 
     pml5_table() : pmlx_table() { } 
 
-    void map_range(uint64_t vaddr, size_t cnt, size_t flags);
+    void map_range(uint64_t vaddr, size_t cnt, size_t flags, ssize_t pa);
     void unmap_range(uint64_t vaddr, size_t cnt);
 
-    void map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0);
-    void map_page(uint64_t vaddr, uint64_t flags);
+    void map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0, ssize_t pa);
+    void map_page(uint64_t vaddr, uint64_t flags, ssize_t pa);
     void unmap_page(uint64_t vaddr);
 
     class virtual_address {
@@ -240,7 +264,7 @@ struct pml5_table : pmlx_table {
         virtual_address() : pml5_raw(0) { }
         ~virtual_address() { delete _pml5e; delete _pml4e; delete _pml3e; delete _pml2e; delete _pml1e; }
 
-        void map(uint64_t pml5_flags, uint64_t pml4_flags, uint64_t pml3_flags, uint64_t pml2_flags, uint64_t pml1_flags);
+        void map(uint64_t pml5_flags, uint64_t pml4_flags, uint64_t pml3_flags, uint64_t pml2_flags, uint64_t pml1_flags, ssize_t pa);
         uint64_t unmap();
 
         void compute_indices() {

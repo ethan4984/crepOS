@@ -16,6 +16,11 @@ inline size_t abs(size_t a, size_t b) {
     return a > b ? a - b : b - a;
 }
 
+template <typename T, size_t size>
+constexpr size_t lengthof(T(&)[size]) { 
+    return size;
+}
+
 inline size_t log2(size_t a) {
     size_t cnt = 0; 
     while(a /= 2)
@@ -69,11 +74,6 @@ void bm_free_region(T *bitmap, size_t start, size_t limit) {
     for(size_t i = start; i < start + limit; i++) {
         bm_clear(bitmap, i);
     }    
-}
-
-template <typename T, size_t size>
-constexpr size_t lengthof(T(&)[size]) { 
-    return size;
 }
 
 inline constexpr ssize_t pow(ssize_t base, ssize_t exp) {

@@ -8,6 +8,7 @@
 
 #include <drivers/hpet.hpp>
 #include <drivers/pci.hpp>
+#include <drivers/tty.hpp>
 
 #include <sched/scheduler.hpp>
 #include <sched/smp.hpp>
@@ -18,12 +19,17 @@
 #include <debug.hpp>
 #include <vector.hpp>
 #include <map.hpp>
+#include <font.hpp>
 
 extern "C" void __cxa_pure_virtual() { while (1); }
 extern "C" void _init();
 
+static stivale *stivale_virt = NULL;
+
 void kernel_thread() {
-    print("Welcome to the kernel thread bois\n");
+    tty::screen bruh(stivale_virt);
+    tty::tty new_tty(bruh, (uint8_t*)font_bitmap, 16, 8);
+
     for(;;)
         asm ("pause");
 }
@@ -35,7 +41,7 @@ extern "C" int main(size_t stivale_phys) {
         vmm::high_vma = 0xff00000000000000;
     }
 
-    stivale *stivale_virt = reinterpret_cast<stivale*>(stivale_phys + vmm::high_vma);
+    stivale_virt = reinterpret_cast<stivale*>(stivale_phys + vmm::high_vma);
 
     pmm::init(stivale_virt);
 

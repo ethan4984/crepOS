@@ -1,4 +1,5 @@
 #include <mm/pmm.hpp>
+#include <sched/smp.hpp>
 
 namespace vmm {
 
@@ -121,7 +122,7 @@ pml4_table::virtual_address::virtual_address(uint64_t *pml4_raw, uint64_t vaddr)
     _pml1e = new pml1e(&pml1_raw[pml1_idx]);
 }
 
-void pml4_table::virtual_address::map(uint64_t pml4_flags, uint64_t pml3_flags, uint64_t pml2_flags, uint64_t pml1_flags) {
+void pml4_table::virtual_address::map(uint64_t pml4_flags, uint64_t pml3_flags, uint64_t pml2_flags, uint64_t pml1_flags, ssize_t pa) {
     if(pml4_raw == NULL)
         return;
 
@@ -147,6 +148,8 @@ void pml4_table::virtual_address::map(uint64_t pml4_flags, uint64_t pml3_flags, 
     _pml3e = new pml3e(&pml3_raw[pml3_idx]);
     if(_pml3e->is_huge()) {
         page_length = 0x40000000;
+        if(pa != -1)
+            _pml3e->set_pa(pa);
         return;
     }
 
@@ -166,6 +169,8 @@ void pml4_table::virtual_address::map(uint64_t pml4_flags, uint64_t pml3_flags, 
     _pml2e = new pml2e(&pml2_raw[pml2_idx]);
     if(_pml2e->is_huge()) {
         page_length = 0x200000;
+        if(pa != -1)
+            _pml2e->set_pa(pa);
         return;
     }
 
@@ -180,6 +185,9 @@ void pml4_table::virtual_address::map(uint64_t pml4_flags, uint64_t pml3_flags, 
 
     _pml1e = new pml1e(&pml1_raw[pml1_idx]);
     page_length = 0x1000;
+
+    if(pa != -1)
+        _pml1e->set_pa(pa);
 }
 
 uint64_t pml4_table::virtual_address::unmap() {
@@ -200,7 +208,7 @@ uint64_t pml4_table::virtual_address::unmap() {
     return paddr;
 }
 
-void pml5_table::virtual_address::map(uint64_t pml5_flags, uint64_t pml4_flags, uint64_t pml3_flags, uint64_t pml2_flags, uint64_t pml1_flags) {
+void pml5_table::virtual_address::map(uint64_t pml5_flags, uint64_t pml4_flags, uint64_t pml3_flags, uint64_t pml2_flags, uint64_t pml1_flags, ssize_t pa) {
     if(pml5_raw == NULL)
         return;
 
@@ -236,6 +244,8 @@ void pml5_table::virtual_address::map(uint64_t pml5_flags, uint64_t pml4_flags, 
     _pml3e = new pml3e(&pml3_raw[pml3_idx]);
     if(_pml3e->is_huge()) {
         page_length = 0x40000000;
+        if(pa != -1)
+            _pml3e->set_pa(pa);
         return;
     }
     
@@ -256,6 +266,8 @@ void pml5_table::virtual_address::map(uint64_t pml5_flags, uint64_t pml4_flags, 
     
     if(_pml2e->is_huge()) {
         page_length = 0x200000;
+        if(pa != -1)
+            _pml2e->set_pa(pa);
         return;
     }
 
@@ -269,7 +281,10 @@ void pml5_table::virtual_address::map(uint64_t pml5_flags, uint64_t pml4_flags, 
     }
 
     _pml1e = new pml1e(&pml1_raw[pml1_idx]);
+
     page_length = 0x1000;
+    if(pa != -1)
+        _pml1e->set_pa(pa);
 }
 
 uint64_t pml5_table::virtual_address::unmap() {
@@ -290,19 +305,19 @@ uint64_t pml5_table::virtual_address::unmap() {
     return paddr;
 }
 
-void pml4_table::map_range(uint64_t vaddr, size_t cnt, size_t flags) {
+void pml4_table::map_range(uint64_t vaddr, size_t cnt, size_t flags, ssize_t pa) {
     spin_lock(&lock);
 
     if(flags & (1 << 7)) {
         for(size_t i = 0; i < cnt; i++) {
-            virtual_address new_addr(highest_raw, vaddr);
-            new_addr.map(0x3, 0x3, flags, 0);
+            virtual_address new_addr(highest_raw, vaddr, pa);
+            new_addr.map(0x3, 0x3, flags, 0, pa);
             vaddr += 0x200000;
         }
     } else {
         for(size_t i = 0; i < cnt; i++) {
-            virtual_address new_addr(highest_raw, vaddr);
-            new_addr.map(0x3, 0x3, 0x3, flags);
+            virtual_address new_addr(highest_raw, vaddr, pa);
+            new_addr.map(0x3, 0x3, 0x3, flags, pa);
             vaddr += 0x1000;
         }
     }
@@ -325,19 +340,19 @@ void pml4_table::unmap_range(uint64_t vaddr, size_t cnt) {
     spin_release(&lock);
 }
 
-void pml5_table::map_range(uint64_t vaddr, size_t cnt, size_t flags) {
+void pml5_table::map_range(uint64_t vaddr, size_t cnt, size_t flags, ssize_t pa) {
     spin_lock(&lock);
 
     if(flags & (1 << 7)) {
         for(size_t i = 0; i < cnt; i++) {
             virtual_address new_addr(highest_raw, vaddr);
-            new_addr.map(0x8, 0x3, 0x3, flags, 0);
+            new_addr.map(0x8, 0x3, 0x3, flags, 0, pa);
             vaddr += 0x200000;
         }
     } else {
         for(size_t i = 0; i < cnt; i++) {
             virtual_address new_addr(highest_raw, vaddr);
-            new_addr.map(0x8, 0x3, 0x3, 0x3, flags);
+            new_addr.map(0x8, 0x3, 0x3, 0x3, flags, pa);
             vaddr += 0x1000;
         }
     }
@@ -361,15 +376,15 @@ void pml5_table::unmap_range(uint64_t vaddr, size_t cnt) {
     spin_release(&lock);
 }
 
-void pml4_table::map_page(uint64_t vaddr, uint64_t flags) {
+void pml4_table::map_page(uint64_t vaddr, uint64_t flags, ssize_t pa) {
     spin_lock(&lock);
 
     if(flags & (1 << 7)) {
         virtual_address addr(highest_raw, vaddr, pmm::calloc(0x200));
-        addr.map(0x3, 0x3, flags, 0);
+        addr.map(0x3, 0x3, flags, 0, pa);
     } else {
         virtual_address addr(highest_raw, vaddr, pmm::calloc(1));
-        addr.map(0x3, 0x3, 0x3, flags);
+        addr.map(0x3, 0x3, 0x3, flags, pa);
     }
 
     spin_release(&lock);
@@ -377,15 +392,15 @@ void pml4_table::map_page(uint64_t vaddr, uint64_t flags) {
     tlb_flush();
 }
 
-void pml4_table::map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0) {
+void pml4_table::map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0, ssize_t pa) {
     spin_lock(&lock);
 
     if(flags0 & (1 << 7)) {
         virtual_address addr(highest_raw, vaddr, paddr);
-        addr.map(flags1, flags1, flags0, 0);
+        addr.map(flags1, flags1, flags0, 0, pa);
     } else {
         virtual_address addr(highest_raw, vaddr, paddr);
-        addr.map(flags1, flags1, flags1, flags0);
+        addr.map(flags1, flags1, flags1, flags0, pa);
     }
 
     spin_release(&lock);
@@ -408,15 +423,15 @@ void pml4_table::unmap_page(uint64_t vaddr) {
     spin_release(&lock);
 }
 
-void pml5_table::map_page(uint64_t vaddr, uint64_t flags) {
+void pml5_table::map_page(uint64_t vaddr, uint64_t flags, ssize_t pa) {
     spin_lock(&lock);
 
     if(flags & (1 << 7)) {
         virtual_address addr(highest_raw, vaddr, pmm::calloc(0x200));
-        addr.map(0x3, 0x3, 0x3, flags, 0);
+        addr.map(0x3, 0x3, 0x3, flags, 0, pa);
     } else {
         virtual_address addr(highest_raw, vaddr, pmm::calloc(1));
-        addr.map(0x3, 0x3, 0x3, 0x3, flags);
+        addr.map(0x3, 0x3, 0x3, 0x3, flags, pa);
     }
 
     spin_release(&lock);
@@ -424,15 +439,15 @@ void pml5_table::map_page(uint64_t vaddr, uint64_t flags) {
     tlb_flush();
 }
 
-void pml5_table::map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0) {
+void pml5_table::map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0, ssize_t pa) {
     spin_lock(&lock);
 
     if(flags0 & (1 << 7)) {
         virtual_address addr(highest_raw, vaddr, paddr);
-        addr.map(flags1, flags1, flags1, flags0, 0);
+        addr.map(flags1, flags1, flags1, flags0, 0, pa);
     } else {
         virtual_address addr(highest_raw, vaddr, paddr);
-        addr.map(flags1, flags1, flags1, flags1, flags0);
+        addr.map(flags1, flags1, flags1, flags1, flags0, pa);
     }
 
     spin_release(&lock);
@@ -455,6 +470,28 @@ void pml5_table::unmap_page(uint64_t vaddr) {
     spin_release(&lock);
 }
 
+ssize_t set_pat() {
+    cpuid_state cpu_state = cpuid(1, 0); 
+
+    if(!(cpu_state.rdx & (1 << 16)))
+        return -1;
+
+    uint64_t pat = rdmsr(pat_msr);
+
+    uint8_t *pat_arr = reinterpret_cast<uint8_t*>(&pat); 
+
+    pat_arr[pa_uc] = uc;
+    pat_arr[pa_wc] = wc;
+    pat_arr[pa_wt] = wt;
+    pat_arr[pa_wp] = wp;
+    pat_arr[pa_wb] = wb;
+    pat_arr[pa_ucm] = ucm;
+
+    wrmsr(pat_msr, pat);
+
+    return 0;
+}
+
 void init() {
     cpuid_state cpu_id = cpuid(7, 0);
 
@@ -468,15 +505,17 @@ void init() {
     
     size_t phys = 0;
     for(size_t i = 0; i < 0x200; i++) {
-        kernel_mapping->map_page_raw(phys + kernel_high_vma, phys, 0x3, 0x3 | (1 << 7) | (1 << 8));
+        kernel_mapping->map_page_raw(phys + kernel_high_vma, phys, 0x3, 0x3 | (1 << 7) | (1 << 8), -1);
         phys += 0x200000;
     }
 
     phys = 0;
     for(size_t i = 0; i < pmm::total_mem / 0x200000; i++) {
-        kernel_mapping->map_page_raw(phys + high_vma, phys, 0x3, 0x3 | (1 << 7) | (1 << 8));
+        kernel_mapping->map_page_raw(phys + high_vma, phys, 0x3, 0x3 | (1 << 7) | (1 << 8), -1);
         phys += 0x200000;
     }
+
+    set_pat();
 
     asm volatile ("mov %0, %%cr3" :: "r" (reinterpret_cast<uint64_t>(pml_highest) - high_vma) : "memory");
 }

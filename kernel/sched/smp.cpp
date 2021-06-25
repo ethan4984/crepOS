@@ -30,6 +30,8 @@ static void core_bootstrap(size_t core_index) {
     apic::lapic->write(apic::lapic->sint(), apic::lapic->read(apic::lapic->sint()) | 0x1ff);
     asm volatile ("mov %0, %%cr8\nsti" :: "r"(0ull));
 
+    vmm::set_pat();
+
     for(;;)
         asm ("pause");
 }
@@ -47,7 +49,7 @@ void boot_aps() {
 
     uint32_t current_apic_id = apic::lapic->read(apic::lapic->id_reg());
 
-    vmm::kernel_mapping->map_page_raw(0, 0, 0x3, 0x3 | (1 << 7) | (1 << 8)); 
+    vmm::kernel_mapping->map_page_raw(0, 0, 0x3, 0x3 | (1 << 7) | (1 << 8), -1); 
 
     for(size_t i = 0; i < madt0_list.size(); i++) {
         madt0 madt0_entry = madt0_list[i];

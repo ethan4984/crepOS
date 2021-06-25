@@ -7,8 +7,9 @@
 namespace vfs {
 
 struct default_ioctl { 
-    virtual void call([[maybe_unused]] regs *regs_cur) { 
+    virtual int call([[maybe_unused]] regs *regs_cur) { 
         print("Warning: this fd is not assoicated with any device\n");
+        return -1; 
     }
 };
 
