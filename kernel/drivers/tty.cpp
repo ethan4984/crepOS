@@ -89,12 +89,18 @@ void tty::scroll() {
     clear_cursor();
 
     for(ssize_t i = cols; i < rows * cols; i++) {
-        plot_char((i - cols) % cols, (i - cols) / cols, text_foreground, text_background, char_grid[i]);
+        char_grid[i - cols] = char_grid[i];
     }
 
     for(ssize_t i = rows * cols - cols; i < rows * cols; i++) {
-        plot_char(i % cols, i / cols, text_foreground, text_background, ' ');
+        char_grid[i] = 0;
     }
+
+    memcpy64((uint64_t*)sc.framebuffer, (uint64_t*)sc.double_buffer + (sc.pitch * font_height) / 8, (sc.size - sc.pitch * font_height) / 8); 
+    memcpy64((uint64_t*)sc.double_buffer, (uint64_t*)sc.double_buffer + (sc.pitch * font_height) / 8, (sc.size - sc.pitch * font_height) / 8);
+
+    memset32((uint32_t*)sc.framebuffer + (sc.size - sc.pitch * font_height) / 4, text_background, sc.pitch * font_height / 4); 
+    memset32((uint32_t*)sc.double_buffer + (sc.size - sc.pitch * font_height) / 4, text_background, sc.pitch * font_height / 4); 
 
     draw_cursor();
 }
@@ -154,8 +160,9 @@ void tty::putchar(char c) {
             break;
         case '\n':
             if(cursor_y == rows - 1) {
-                update_cursor(0, cursor_y);
+            //    update_cursor(0, rows - 1);
                 scroll();
+                update_cursor(0, rows - 1);
             } else { 
                 update_cursor(0, cursor_y + 1);
             }

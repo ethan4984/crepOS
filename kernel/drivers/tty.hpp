@@ -95,6 +95,12 @@ void ps2_keyboard(regs *regs_cur);
 inline lib::map<ssize_t, tty> tty_list;
 inline ssize_t current_tty;
 
+inline void putchar(char c) {
+    if(current_tty == -1) 
+        return;
+    tty_list[current_tty].putchar(c);
+}
+
 }
 
 #endif
