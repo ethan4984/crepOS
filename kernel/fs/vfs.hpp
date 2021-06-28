@@ -33,13 +33,14 @@ public:
     node *search_relative(lib::string name);
     void remove(lib::string path);
 
+    node *parent; // parent directory
+
     friend node *create_node(node *parent, lib::string name);
 private:
     node *next; // next file in the current directory
     node *last; // last file in the current directory
 
     node *child; // child files
-    node *parent; // parent directory
 
     default_ioctl *ioctl_device;
 

@@ -23,8 +23,6 @@ using blkcnt_t = int64_t;
 using time_t = int64_t;
 using clockid_t = int64_t;
 
-namespace fd { 
-
 constexpr size_t seek_cur = 1;
 constexpr size_t seek_end = 2;
 constexpr size_t seek_set = 3;
@@ -49,7 +47,8 @@ constexpr size_t o_rsync = 0x1000;
 constexpr size_t o_sync = 0x2000;
 constexpr size_t o_cloexec = 0x4000;
 
-};
+constexpr size_t enoent = 1043;
+constexpr size_t einval = 1026;
 
 struct timespec {
     time_t tv_sec;

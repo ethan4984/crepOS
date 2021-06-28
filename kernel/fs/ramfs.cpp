@@ -70,7 +70,7 @@ int fs::write(vfs::node *vfs_node, off_t off, off_t cnt, void *buf) {
 }
 
 int fs::open(vfs::node *vfs_node, uint16_t flags) {
-    if(flags & fd::o_creat) {
+    if(flags & o_creat) {
         node new_node(vfs_node);
         return 0;
     }

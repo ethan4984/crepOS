@@ -133,23 +133,26 @@ struct inode {
     uint32_t inode_index;
 };
 
-struct dir {
-    dir(inode *parent_inode, lib::string path);
+struct [[gnu::packed]] raw_dir {
+    uint32_t inode;
+    uint16_t entry_size;
+    uint8_t name_length;
+    uint8_t type;
+    char name[];
+}; 
 
-    struct raw_dir {
-        uint32_t inode;
-        uint16_t entry_size;
-        uint8_t name_length;
-        uint8_t type;
-        char name[];
-    };
+struct dir {
+    dir(inode *parent_inode, uint32_t new_inode, uint8_t type, char *name);
+    dir(inode *parent_inode, lib::string path, bool find);
 
     raw_dir *raw;
 
     inode *parent_inode;
     lib::string path;
+    bool exists;
 private:
     ssize_t search_relative(lib::string path);
+    ssize_t delete_relative(lib::string name);
 };
 
 class fs {
@@ -165,6 +168,7 @@ public:
 
     friend class bgd;
     friend class inode;
+    friend class dir;
 private:
     superblock superb;
     inode root_inode;
@@ -181,7 +185,7 @@ private:
     ssize_t alloc_inode();
     void free_inode(uint32_t inode_index);
 
-    void delete_inode(inode &inode_cur);
+    int refresh_node(inode &inode_cur, lib::string mount_gate);
 };
 
 }
