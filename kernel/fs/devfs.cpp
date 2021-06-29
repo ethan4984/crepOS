@@ -45,7 +45,7 @@ void scan_partitions(msd *device) {
 
             node_list.push(node(vfs::root_node.search_absolute(absolute_path), partitions[i].starting_lba * device->sector_size, partitions[i].sector_cnt, device));
 
-            ext2::fs(node_list.last());
+            new ext2::fs(node_list.last());
         }
 
         return;

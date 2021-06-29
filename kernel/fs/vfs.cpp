@@ -1,4 +1,5 @@
 #include <fs/vfs.hpp>
+#include <fs/devfs.hpp>
  
 namespace vfs {
  
@@ -27,19 +28,23 @@ node::node(lib::string absolute_path, default_ioctl *ioctl_device) : absolute_pa
         lib::vector<lib::string> ret;
  
         while(end != lib::string::npos) {
-            ret.push(absolute_path.substr(start, end - start));
+            lib::string token = absolute_path.substr(start, end - start);
+            if(!token.empty())
+                ret.push(token);
             start = end + 1;
             end = absolute_path.find_first('/', start);
         }
- 
-        ret.push(absolute_path.substr(start, end));
+
+        lib::string token = absolute_path.substr(start, end);
+        if(!token.empty())
+            ret.push(absolute_path.substr(start, end));
  
         return ret;
     } ();
- 
+
     node *node_cur = &root_node; 
     node *parent_cur;
- 
+
     for(size_t i = 0; i < sub_paths.size(); i++) {
         parent_cur = node_cur;
         node_cur = node_cur->search_relative(sub_paths[i]);
@@ -80,16 +85,20 @@ node *node::search_absolute(lib::string path) {
         lib::vector<lib::string> ret;
  
         while(end != lib::string::npos) {
-            ret.push(path.substr(start, end - start));
+            lib::string token = path.substr(start, end - start);
+            if(!token.empty())
+                ret.push(token);
             start = end + 1;
             end = path.find_first('/', start);
         }
- 
-        ret.push(path.substr(start, end));
+
+        lib::string token = path.substr(start, end);
+        if(!token.empty())
+            ret.push(path.substr(start, end));
  
         return ret;
     } ();
- 
+
     node *cur = &root_node;
  
     for(size_t i = 0; i < sub_paths.size(); i++) {
@@ -115,7 +124,7 @@ node *create_node(node *parent, lib::string name) {
     }
     else
         absolute_path = parent->absolute_path + name;
- 
+
     lib::string relative_path("");
     if(parent->filesystem != NULL && parent->filesystem->flags & fs::is_mounted) {
         relative_path = lib::string(absolute_path.data() + parent->filesystem->mount_gate.length());
@@ -127,6 +136,7 @@ node *create_node(node *parent, lib::string name) {
     new_node->relative_path = relative_path;
     new_node->name = name;
     new_node->filesystem = parent->filesystem;
+    new_node->stat_cur = (stat*)kmm::calloc(sizeof(stat));
  
     new_node->parent = parent;
     node *cur = parent;
@@ -167,13 +177,29 @@ void node::remove_cluster(node *cur) {
         cur = cur->next;
     }
 }
- 
-void test() {
-    node lol("lmao/base/epical/bruh", NULL);
-    node *bruh = root_node.search_absolute("/lmao/base/epical/bruh");
-    print("{}\n", bruh->absolute_path);
-    root_node.remove("lmao/base");
-    print("{x}\n", reinterpret_cast<size_t>(root_node.search_absolute("lmao/base")));
+
+int mount(lib::string source, lib::string target) {
+    node *source_vfs_node = root_node.search_absolute(source);
+    if(source_vfs_node == NULL) 
+        return -1;
+    
+    dev::node source_devfs_node(source_vfs_node);
+    if(source_devfs_node.vfs_node == NULL) 
+        return -1;
+
+    if(source_devfs_node.filesystem == NULL)
+        return -1;
+
+    node *target_vfs_node = root_node.search_absolute(target);
+    if(target_vfs_node == NULL) 
+        return -1;
+
+    target_vfs_node->filesystem = source_devfs_node.filesystem;
+    target_vfs_node->filesystem->mount_gate = target;
+    target_vfs_node->filesystem->flags |= vfs::fs::is_mounted;
+    target_vfs_node->filesystem->refresh(target_vfs_node);
+
+    return 0;
 }
  
 }

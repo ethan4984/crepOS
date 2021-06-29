@@ -41,26 +41,36 @@ dir::dir(inode *parent_inode, lib::string path, bool find) : raw(NULL), parent_i
         lib::vector<lib::string> ret;
  
         while(end != lib::string::npos) {
-            ret.push(path.substr(start, end - start));
+            lib::string token = path.substr(start, end - start);
+            if(!token.empty())
+                ret.push(token);
             start = end + 1;
             end = path.find_first('/', start);
         }
- 
-        ret.push(path.substr(start, end));
+
+        lib::string token = path.substr(start, end);
+        if(!token.empty())
+            ret.push(path.substr(start, end));
  
         return ret;
     } ();
 
-    for(size_t i = 0; i < sub_paths.size(); i++) {
-        if(search_relative(sub_paths[i]) == -1) {
-            exists = false;
-            return;
+    if(find == true) {
+        inode *save = parent_inode;
+        parent_inode = new inode;
+        *parent_inode = *save;
+
+        for(size_t i = 0; i < sub_paths.size(); i++) {
+            if(search_relative(sub_paths[i]) == -1) {
+                exists = false;
+                return;
+            }
+            *parent_inode = inode(parent_inode->parent, raw->inode);
         }
 
-        *parent_inode = inode(parent_inode->parent, raw->inode);
-    }
-
-    if(find == false) {
+        delete parent_inode;
+        parent_inode = save;
+    } else {
         if(delete_relative(sub_paths.last()) == -1) {
             exists = false;
             return;
@@ -87,7 +97,7 @@ dir::dir(inode *parent_inode, uint32_t new_inode, uint8_t type, char *name) : pa
 
             memcpy8((uint8_t*)dir_cur->name, (uint8_t*)name, dir_cur->name_length);
 
-            i += dir_cur->entry_size; 
+            i += dir_cur->entry_size;
             dir_cur = (raw_dir*)(buffer + i);
             memset8((uint8_t*)dir_cur, 0, sizeof(raw_dir));
 

@@ -4,21 +4,25 @@ namespace ext2 {
 
 inode::inode(fs *parent, uint32_t inode_index) : parent(parent), inode_index(inode_index) {
     uint32_t inode_table_index = (inode_index - 1) % parent->superb.inodes_per_group;
+    uint32_t bgd_index = (inode_index - 1) / parent->superb.inodes_per_group;
 
-    bgd inode_bgd(parent, inode_index);
+    bgd inode_bgd(parent, bgd_index);
 
     parent->devfs_node.read(inode_bgd.raw.inode_table_block * parent->block_size + parent->superb.inode_size * inode_table_index, sizeof(raw), reinterpret_cast<void*>(&raw));
 }
 
 inode::inode(inode &buf) {
-    *this = buf;
+    raw = buf.raw;
+    parent = buf.parent;
+    inode_index = buf.inode_index;
     write_back();
 }
 
 void inode::write_back() {
     uint32_t inode_table_index = (inode_index - 1) % parent->superb.inodes_per_group;
+    uint32_t bgd_index = (inode_index - 1) / parent->superb.inodes_per_group;
 
-    bgd inode_bgd(parent, inode_index);
+    bgd inode_bgd(parent, bgd_index);
 
     parent->devfs_node.write(inode_bgd.raw.inode_table_block * parent->block_size + parent->superb.inode_size * inode_table_index, sizeof(raw), reinterpret_cast<void*>(&raw));
 }
@@ -63,7 +67,6 @@ void inode::write(off_t off, off_t cnt, void *buf) {
 
         headway += size;
     }
-
 }
 
 ssize_t inode::resize(off_t start, off_t cnt) {

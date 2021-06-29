@@ -134,7 +134,7 @@ size_t string::find_first(char c, size_t start) {
 }
 
 size_t string::find_last(char c) {
-    for(size_t i = _length; i > 0; i--) {
+    for(ssize_t i = _length - 1; i >= 0; i--) {
         if(_raw[i] == c) 
             return i;
     }
@@ -168,6 +168,9 @@ string &string::erase(size_t pos, size_t size) {
 string string::substr(size_t start, size_t size) {
     if(size == npos)
         size = _length - start;
+
+    if(size == 0)
+        return string();
 
     return string(_raw + start, size);
 }

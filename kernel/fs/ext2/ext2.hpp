@@ -155,12 +155,12 @@ private:
     ssize_t delete_relative(lib::string name);
 };
 
-class fs {
+class fs : vfs::fs {
 public:
     fs(dev::node &devfs_node);
     fs() = default;
 
-    int open(vfs::node *vfs_node, int flags);
+    int open(vfs::node *vfs_node, uint16_t flags);
     int read(vfs::node *vfs_node, off_t off, off_t cnt, void *buf);
     int write(vfs::node *vfs_node, off_t off, off_t cnt, void *buf);
     int refresh(vfs::node *vfs_node);

@@ -35,6 +35,7 @@ public:
     ssize_t read(size_t start, size_t cnt, void *ret);
     ssize_t write(size_t start, size_t cnt, void *ret);
 
+    vfs::fs *filesystem;
     vfs::node *vfs_node;
     msd *device;
 private:

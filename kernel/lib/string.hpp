@@ -36,6 +36,7 @@ public:
 
     size_t length() const { return _length; }
     char *data() const { return _raw; }
+    bool empty() const { return (_length == 0) ? true : false; }
 
     static constexpr size_t npos = ~(0ull);
 private:

@@ -61,7 +61,7 @@ struct fs {
         return -1;
     }
 
-    virtual int write(node *vfs_node, off_t off, off_t cnt, const void *buf) {
+    virtual int write(node *vfs_node, off_t off, off_t cnt, void *buf) {
         print("Warning: unimplemented filesystem call on node {} write<{}, {}, {}>\n",  vfs_node->absolute_path,
                                                                                         off,
                                                                                         cnt,
@@ -91,16 +91,16 @@ struct fs {
 
     lib::string mount_gate;
 
-    static constexpr size_t nofs_signature = (0 << 0);
-    static constexpr size_t ext2_signature = (0 << 1);
-    static constexpr size_t fat32_signature = (0 << 2);
-    static constexpr size_t ramfs_signature = (0 << 3);
-    static constexpr size_t is_mounted = (0 << 4);
+    static constexpr size_t nofs_signature = (1 << 0);
+    static constexpr size_t ext2_signature = (1 << 1);
+    static constexpr size_t fat32_signature = (1 << 2);
+    static constexpr size_t ramfs_signature = (1 << 3);
+    static constexpr size_t is_mounted = (1 << 4);
 
     size_t flags;
 };
 
-void test();
+int mount(lib::string source, lib::string target);
 
 }
 

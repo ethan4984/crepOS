@@ -14,6 +14,7 @@
 #include <sched/smp.hpp>
 
 #include <fs/vfs.hpp>
+#include <fs/fd.hpp>
 
 #include <stivale.hpp>
 #include <debug.hpp>
@@ -29,6 +30,8 @@ static stivale *stivale_virt = NULL;
 void kernel_thread() {
     tty::screen bruh(stivale_virt);
     tty::tty new_tty(bruh, (uint8_t*)font_bitmap, 16, 8);
+
+    vfs::mount("/dev/sd0-0", "/");
 
     for(;;)
         asm ("pause");

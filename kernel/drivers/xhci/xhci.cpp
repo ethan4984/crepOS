@@ -77,7 +77,7 @@ controller::controller(pci::device pci_device) : pci_device(pci_device) {
                 break;
             case 2:
                 break;
-            defualt:
+            default:
                 print("[XHCI] Unhandled protocol with cap id {}\n", cap_id);
         }
 

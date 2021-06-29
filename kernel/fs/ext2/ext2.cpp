@@ -10,12 +10,19 @@ fs::fs(dev::node &devfs_node) : devfs_node(devfs_node) {
     }
 
     print("[EXT2] Filesystem Detected on Device {}\n", devfs_node.vfs_node->absolute_path);
+    print("[EXT2] Inode cnt: {}\n", (unsigned)superb.inode_cnt);
+    print("[EXT2] Inodes per group: {}\n", (unsigned)superb.inodes_per_group);
+    print("[EXT2] Block cnt: {}\n", (unsigned)superb.block_cnt);
+    print("[EXT2] Blocks per group: {}\n", (unsigned)superb.blocks_per_group);
+    print("[EXT2] First non-reserved inode: {}\n", (unsigned)superb.first_inode);
 
     block_size = 1024 << superb.block_size;
     frag_size = 1024 << superb.frag_size;
-    bgd_cnt = superb.block_cnt / superb.blocks_per_group;
+    bgd_cnt = div_roundup(superb.block_cnt, superb.blocks_per_group);
 
     root_inode = inode(this, 2);
+
+    devfs_node.filesystem = this;
 }
 
 ssize_t fs::alloc_block() {
@@ -103,6 +110,7 @@ int fs::read(vfs::node *vfs_node, off_t off, off_t cnt, void *buf) {
 
     inode inode_cur(this, file_dir_entry.raw->inode);
     inode_cur.read(off, cnt, buf);
+
     return cnt;
 }
 
@@ -111,16 +119,15 @@ int fs::write(vfs::node *vfs_node, off_t off, off_t cnt, void *buf) {
         return -1;
     }
 
-    if((off + cnt) > vfs_node->stat_cur->st_size) {
-        cnt = vfs_node->stat_cur->st_size - off;
-    }
-
     dir file_dir_entry(&root_inode, vfs_node->relative_path, true);
     if(file_dir_entry.raw == NULL) 
         return -1;
 
     inode inode_cur(this, file_dir_entry.raw->inode);
     inode_cur.write(off, cnt, buf);
+
+    vfs_node->stat_cur->st_size += cnt;
+
     return cnt;
 }
 
@@ -147,6 +154,7 @@ int fs::refresh_node(inode &inode_cur, lib::string mount_gate) {
         }
 
         inode new_inode(this, dir_cur->inode);
+    
         if(new_inode.raw.permissions & 0x4000) { // is a directory
             lib::string directory_path = absolute_path + "/";
             vfs::node(directory_path, NULL); 
@@ -174,16 +182,15 @@ int fs::unlink(vfs::node *vfs_node) {
     return 0; 
 }
 
-int fs::refresh([[maybe_unused]] vfs::node *vfs_node) {
-    return refresh_node(root_inode, devfs_node.vfs_node->filesystem->mount_gate);
+int fs::refresh(vfs::node *vfs_node) {
+    return refresh_node(root_inode, vfs_node->absolute_path);
 }
 
-int fs::open(vfs::node *vfs_node, int flags) {
+int fs::open(vfs::node *vfs_node, uint16_t flags) {
     if(flags & o_creat) {
         inode parent_inode;
-        inode new_inode;
-
-        if(vfs_node->relative_path == "/") {
+        
+        if(vfs_node->parent->relative_path == "/") {
             parent_inode = root_inode;
         } else {
             dir dir_entry(&root_inode, vfs_node->parent->relative_path, true); 
@@ -194,7 +201,7 @@ int fs::open(vfs::node *vfs_node, int flags) {
             parent_inode = inode(this, dir_entry.raw->inode);
         }
 
-        new_inode = inode(this, alloc_inode());
+        inode new_inode(this, alloc_inode());
 
         if(new_inode.set_block(0, alloc_block()) == -1)
             return -1;
@@ -202,7 +209,13 @@ int fs::open(vfs::node *vfs_node, int flags) {
         new_inode.raw.sector_cnt = block_size / devfs_node.device->sector_size;
         new_inode.write_back();
 
-        dir create_dir_entry(&parent_inode, new_inode.inode_index, 0, (vfs_node->absolute_path + vfs_node->absolute_path.find_last('/')).data());
+        char *path = [&]() {
+            char *ret = vfs_node->absolute_path.data();
+            ssize_t offset = vfs_node->absolute_path.find_last('/');
+            return ret + offset + 1;
+        } ();
+
+        dir create_dir_entry(&parent_inode, new_inode.inode_index, 0, path);
         parent_inode.raw.hard_link_cnt++;
         parent_inode.write_back();
 
@@ -212,7 +225,7 @@ int fs::open(vfs::node *vfs_node, int flags) {
     dir dir_entry(&root_inode, vfs_node->relative_path, true); 
     if(dir_entry.raw == NULL)
         return -1;
-    
+
     inode inode_cur(this, dir_entry.raw->inode);
     vfs_node->stat_cur->st_size = inode_cur.raw.size32l;
 
