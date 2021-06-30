@@ -38,7 +38,31 @@ pop rax
 
 %endmacro
 
+extern syscall_open
+extern syscall_close
+extern syscall_read
+extern syscall_write
+extern syscall_seek
+extern syscall_mmap
+extern syscall_munmap
+extern syscall_set_fs_base
+extern syscall_set_gs_base
+extern syscall_get_fs_base
+extern syscall_get_gs_base
+
 syscall_list:
+
+dq syscall_open
+dq syscall_close
+dq syscall_read
+dq syscall_write
+dq syscall_seek
+dq syscall_mmap
+dq syscall_munmap
+dq syscall_set_fs_base
+dq syscall_set_gs_base
+dq syscall_get_fs_base
+dq syscall_get_gs_base
 
 .end:
 

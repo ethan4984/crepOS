@@ -71,7 +71,7 @@ extern "C" void isr_handler_main(regs *regs_cur) {
         uint64_t cr2;
         asm volatile ("mov %%cr2, %0" : "=a"(cr2));
         
-        print("[KDEBUG] Kowalski analysis: \"{}\", Error: {x}, LAPIC_ID {x}\n", exception_messages[regs_cur->isr_number], regs_cur->error_code, apic::lapic->read(apic::lapic->id_reg()));
+        print("[KDEBUG] Kowalski analysis: \"{}\", Error: {x}, LAPIC_ID {x}\n", exception_messages[regs_cur->isr_number], regs_cur->err_code, apic::lapic->read(apic::lapic->id_reg()));
         print("[KDEBUG] RAX: {x} | RBX: {x} | RCX: {x} | RDX: {x}\n", regs_cur->rax, regs_cur->rbx, regs_cur->rcx, regs_cur->rdx);
         print("[KDEBUG] RSI: {x} | RDI: {x} | RBP: {x} | RSP: {x}\n", regs_cur->rsi, regs_cur->rdi, regs_cur->rbp, regs_cur->rsp);
         print("[KDEBUG] r8:  {x} | r9:  {x} | r10: {x} | r11: {x}\n", regs_cur->r8, regs_cur->r9, regs_cur->r10, regs_cur->r11);

@@ -1,6 +1,7 @@
 #include <mm/mmap.hpp>
 #include <mm/slab.hpp>
 #include <fs/fd.hpp>
+#include <sched/smp.hpp>
 
 namespace mm {
 
@@ -119,6 +120,16 @@ ssize_t munmap(vmm::pmlx_table *page_map, void *addr, size_t length) {
     page_map->unmap_range((size_t)addr, page_cnt);
 
     return 0;
+}
+
+extern "C" void syscall_mmap(regs *regs_cur) {
+    smp::cpu &cpu = smp::core_local();
+    regs_cur->rax = (size_t)mmap(cpu.page_map, (void*)regs_cur->rdi, regs_cur->rsi, (int)regs_cur->rdx | (1 << 2), (int)regs_cur->r10, (int)regs_cur->r8, (ssize_t)regs_cur->r9);
+}
+
+extern "C" void syscall_munmap(regs *regs_cur) {
+    smp::cpu &cpu = smp::core_local();
+    regs_cur->rax = (size_t)munmap(cpu.page_map, (void*)regs_cur->rdi, regs_cur->rsi);
 }
 
 }

@@ -93,7 +93,7 @@ int fd::seek(off_t off, int whence) {
     }
 }
 
-int syscall_open(regs *regs_cur) {
+extern "C" int syscall_open(regs *regs_cur) {
     lib::string path((char*)regs_cur->rdi);
     int flags = regs_cur->rsi;
     
@@ -109,7 +109,21 @@ int syscall_open(regs *regs_cur) {
     return regs_cur->rax;
 }
 
-int syscall_read(regs *regs_cur) {
+extern "C" int syscall_close(regs *regs_cur) {
+    fd &backing = fd_list[regs_cur->rdi];
+
+    if(backing.backing_fd == -1) {
+        set_errno(ebadf);
+        regs_cur->rax = -1; 
+        return -1;
+    }
+
+    fd_list.remove(regs_cur->rdi);
+
+    return (regs_cur->rax = 0);
+}
+
+extern "C" int syscall_read(regs *regs_cur) {
     fd &backing = fd_list[regs_cur->rdi];
 
     if(backing.backing_fd == -1) {
@@ -123,7 +137,7 @@ int syscall_read(regs *regs_cur) {
     return regs_cur->rax;
 }
 
-int syscall_write(regs *regs_cur) {
+extern "C" int syscall_write(regs *regs_cur) {
     fd &backing = fd_list[regs_cur->rdi];
 
     if(backing.backing_fd == -1) {
@@ -137,7 +151,7 @@ int syscall_write(regs *regs_cur) {
     return regs_cur->rax;
 }
 
-int syscall_seek(regs *regs_cur) {
+extern "C" int syscall_seek(regs *regs_cur) {
     fd &backing = fd_list[regs_cur->rdi];
 
     if(backing.backing_fd == -1) {

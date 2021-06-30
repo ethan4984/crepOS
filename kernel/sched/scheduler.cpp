@@ -193,6 +193,7 @@ void reschedule(regs *regs_cur) {
 
     cpu_local.pid = next_pid;
     cpu_local.tid = next_tid;
+    cpu_local.errno = next_thread.errno;
 
     cpu_local.page_map = next_task.page_map;
     cpu_local.page_map->init();

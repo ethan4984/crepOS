@@ -20,7 +20,7 @@ constexpr size_t thread_stack_size = 0x2000;
 extern "C" void switch_task(uint64_t rsp);
 
 struct thread {
-    thread() : tid(-1), idle_cnt(0) { }
+    thread() : tid(-1), idle_cnt(0), errno(0) { }
 
     tid_t tid;
     size_t idle_cnt;
@@ -31,6 +31,7 @@ struct thread {
     size_t user_fs_base;
     size_t user_stack_size;
     size_t kernel_stack_size;
+    size_t errno;
     regs regs_cur;
 };
 

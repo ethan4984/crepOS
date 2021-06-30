@@ -23,7 +23,7 @@ void cpu_init_features() {
     wrmsr(msr_sfmask, (uint64_t)~((uint32_t)0x002));
 }
 
-void syscall_set_fs_base(regs *regs_cur) {
+extern "C" void syscall_set_fs_base(regs *regs_cur) {
     smp::cpu &core = smp::core_local();
     sched::task &current_task = sched::task_list[core.pid];
     sched::thread &current_thread = current_task.threads[core.tid];
@@ -33,7 +33,7 @@ void syscall_set_fs_base(regs *regs_cur) {
     current_thread.user_fs_base = regs_cur->rdi;
 }
 
-void syscall_set_gs_base(regs *regs_cur) {
+extern "C" void syscall_set_gs_base(regs *regs_cur) {
     smp::cpu &core = smp::core_local();
     sched::task &current_task = sched::task_list[core.pid];
     sched::thread &current_thread = current_task.threads[core.tid];
@@ -43,11 +43,11 @@ void syscall_set_gs_base(regs *regs_cur) {
     current_thread.user_gs_base = regs_cur->rdi;
 }
 
-void syscall_get_fs_base(regs *regs_cur) {
+extern "C" void syscall_get_fs_base(regs *regs_cur) {
     regs_cur->rax = get_user_fs();
 }
 
-void syscall_get_gs_base(regs *regs_cur) {
+extern "C" void syscall_get_gs_base(regs *regs_cur) {
     regs_cur->rax = get_user_gs();
 }
 
