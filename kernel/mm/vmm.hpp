@@ -192,6 +192,9 @@ struct pmlx_table {
         asm volatile ("mov %0, %%cr3" :: "r" (reinterpret_cast<uint64_t>(highest_raw) - high_vma) : "memory");
     }
 
+    uint8_t *bitmap;
+    size_t bm_size;
+
     uint64_t *highest_raw;
     uint64_t lock;
 };

@@ -93,7 +93,7 @@ extern "C" int main(size_t stivale_phys) {
     apic::timer_calibrate(100);
 
     ssize_t pid = sched::create_task(-1, NULL);
-    sched::create_thread(pid, (size_t)kernel_thread, 0x8);
+    sched::create_thread(pid, (size_t)kernel_thread, 0x8, NULL, NULL, NULL);
 
     asm ("sti");
 

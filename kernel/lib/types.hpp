@@ -47,6 +47,7 @@ constexpr size_t o_rsync = 0x1000;
 constexpr size_t o_sync = 0x2000;
 constexpr size_t o_cloexec = 0x4000;
 
+constexpr size_t ebadf = 1008;
 constexpr size_t enoent = 1043;
 constexpr size_t einval = 1026;
 

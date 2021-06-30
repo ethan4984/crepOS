@@ -1,6 +1,7 @@
 #include <sched/scheduler.hpp>
 #include <sched/smp.hpp>
 #include <int/apic.hpp>
+#include <mm/mmap.hpp>
 
 namespace sched {
 
@@ -29,7 +30,7 @@ ssize_t create_task(ssize_t ppid, vmm::pmlx_table *page_map) {
     return new_task.pid;
 }
 
-ssize_t create_thread(ssize_t pid, uint64_t rip, uint16_t cs) {
+ssize_t create_thread(ssize_t pid, uint64_t rip, uint16_t cs, elf::aux *aux, const char **argv, const char **envp) {
     if(task_list[pid].pid == -1)
         return -1;
 
@@ -47,6 +48,65 @@ ssize_t create_thread(ssize_t pid, uint64_t rip, uint16_t cs) {
 
     if(cs & 0x3) {
         new_thread.regs_cur.ss = cs - 8;
+
+        new_thread.user_stack = (size_t)mm::mmap(task_list[pid].page_map, NULL, thread_stack_size, 0x3 | (1 << 2), mm::map_anonymous, 0, 0) + thread_stack_size;
+        new_thread.regs_cur.rsp = new_thread.user_stack;
+
+        uint64_t *stack = (uint64_t*)new_thread.regs_cur.rsp;
+
+        size_t envp_cnt = 0;
+        size_t argv_cnt = 0;
+
+        while(*envp) {
+            const char *element = *envp;
+            stack = (uint64_t*)((size_t)stack - strlen(element) + 1);
+            strcpy((char*)stack, element);
+            envp++; envp_cnt++;
+        }
+
+        while(*argv) {
+            const char *element = *argv;
+            stack = (uint64_t*)((size_t)stack - strlen(element) + 1);
+            strcpy((char*)stack, element);
+            argv++; argv_cnt++;
+        }
+
+        argv -= argv_cnt; envp -= envp_cnt;
+
+        stack = (uint64_t*)((size_t)stack - ((size_t)stack & 0xf));
+
+        if((argv_cnt + envp_cnt + 1) & 1)
+            stack--;
+
+        stack -= 10;
+
+        stack[0] = elf::at_phnum; stack[1] = aux->at_phnum;
+        stack[2] = elf::at_phent; stack[3] = aux->at_phent;
+        stack[4] = elf::at_phdr;  stack[5] = aux->at_phdr;
+        stack[6] = elf::at_entry; stack[7] = aux->at_entry;
+        stack[8] = 0; stack[9] = 0;
+
+        uint64_t save = new_thread.regs_cur.rsp;
+
+        *(--stack) = 0;
+        stack -= envp_cnt;
+
+        for(size_t i = 0; i < envp_cnt; i++) {
+            save -= strlen(envp[i]) + 1;
+            stack[i] = save;
+        }
+
+        *(--stack) = 0;
+        stack -= argv_cnt;
+
+        for(size_t i = 0; i < argv_cnt; i++) {
+            save -= strlen(argv[i]) + 1;
+            stack[i] = save;
+        }
+
+        *(--stack) = argv_cnt; // argc
+
+        new_thread.regs_cur.rsp = (uint64_t)stack;
     } else {
         new_thread.regs_cur.ss = cs + 8;
         new_thread.regs_cur.rsp = new_thread.kernel_stack + vmm::high_vma;

@@ -4,6 +4,7 @@
 #include <types.hpp>
 #include <map.hpp>
 #include <cpu.hpp>
+#include <elf.hpp>
 
 namespace sched {
 
@@ -46,7 +47,7 @@ struct task {
 };
 
 ssize_t create_task(ssize_t pid, vmm::pmlx_table *page_map);
-ssize_t create_thread(ssize_t ppid, uint64_t rip, uint16_t cs);
+ssize_t create_thread(ssize_t ppid, uint64_t rip, uint16_t cs, elf::aux *aux, const char **argv, const char **envp);
 void reschedule(regs *regs_cur);
 
 inline size_t scheduler_lock = 0;
