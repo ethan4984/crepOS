@@ -2,6 +2,7 @@
 #include <sched/smp.hpp>
 #include <int/apic.hpp>
 #include <mm/mmap.hpp>
+#include <fs/fd.hpp>
 
 namespace sched {
 
@@ -49,7 +50,7 @@ ssize_t create_thread(ssize_t pid, uint64_t rip, uint16_t cs, elf::aux *aux, con
     if(cs & 0x3) {
         new_thread.regs_cur.ss = cs - 8;
 
-        new_thread.user_stack = (size_t)mm::mmap(task_list[pid].page_map, NULL, thread_stack_size, 0x3 | (1 << 2), mm::map_anonymous, 0, 0) + thread_stack_size;
+        new_thread.user_stack = (size_t)mm::mmap(task_list[pid].page_map, NULL, thread_stack_size + 0x1000, 0x3 | (1 << 2), mm::map_anonymous, 0, 0) + thread_stack_size;
         new_thread.regs_cur.rsp = new_thread.user_stack;
 
         uint64_t *stack = (uint64_t*)new_thread.regs_cur.rsp;
@@ -214,6 +215,48 @@ void reschedule(regs *regs_cur) {
     spin_release(&scheduler_lock);
 
     switch_task((uint64_t)&task_list[next_pid].threads[next_tid].regs_cur);
+}
+
+ssize_t sched_task(lib::string path, uint16_t cs, const char **argv, const char **envp) { 
+    fs::fd file(path, 0, 0);
+    if(file.status == 0)
+        return -1;
+
+    smp::cpu &core = smp::core_local();
+
+    ssize_t ppid = core.pid;
+
+    asm ("cli");
+
+    vmm::pmlx_table *page_map = core.page_map->create_generic();
+    page_map->init();
+
+    lib::string *ld_path = NULL;
+
+    elf::aux aux;
+    elf::file(page_map, &aux, file, 0, &ld_path);
+
+    uint64_t entry_point = aux.at_entry;
+
+    if(ld_path != NULL) {
+        fs::fd ld_file(*ld_path, 0, 0);
+        if(ld_file.status == 0)
+            return -1;
+
+        elf::aux ld_aux;
+        elf::file(page_map, &ld_aux, ld_file, 0x40000000, NULL);
+
+        entry_point = ld_aux.at_entry;
+    }
+
+    ssize_t pid = create_task(ppid, page_map);
+    create_thread(pid, entry_point, cs, &aux, argv, envp);
+
+    core.page_map->init();
+
+    asm ("sti");
+
+    return 0;
 }
 
 }

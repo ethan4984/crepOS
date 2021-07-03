@@ -23,6 +23,7 @@
 #include <font.hpp>
 
 extern "C" void __cxa_pure_virtual() { while (1); }
+extern "C" void user_test();
 extern "C" void _init();
 
 static stivale *stivale_virt = NULL;

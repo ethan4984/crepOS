@@ -1,5 +1,7 @@
 #include <int/gdt.hpp>
 
+extern "C" void user_test();
+
 namespace x86 {
 
 template <typename T>

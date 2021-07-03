@@ -43,6 +43,8 @@ extern syscall_close
 extern syscall_read
 extern syscall_write
 extern syscall_seek
+extern syscall_dup
+extern syscall_dup2
 extern syscall_mmap
 extern syscall_munmap
 extern syscall_set_fs_base
@@ -57,6 +59,8 @@ dq syscall_close
 dq syscall_read
 dq syscall_write
 dq syscall_seek
+dq syscall_dup
+dq syscall_dup2
 dq syscall_mmap
 dq syscall_munmap
 dq syscall_set_fs_base

@@ -5,8 +5,7 @@
 
 namespace fs {
 
-class fd {
-public:
+struct fd {
     fd(lib::string path, int flags, int backing_fd);
     fd(int backing_fd);
     fd() : status(0), backing_fd(-1) { }
@@ -17,7 +16,7 @@ public:
 
     int status;
     int backing_fd;
-protected:
+    
     size_t *_loc;
     size_t *_flags;
 

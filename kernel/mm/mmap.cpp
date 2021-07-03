@@ -84,6 +84,8 @@ void *mmap(vmm::pmlx_table *page_map, void *addr, size_t length, int prot, int f
             addr = mmap_alloc(page_map, addr, length, flags);
         }
 
+        print("Mapping address {x} page_cnt {x}\n", (size_t)addr, page_cnt); 
+
         page_map->map_range((size_t)addr, page_cnt, prot, prot);
     }
 
@@ -92,7 +94,7 @@ void *mmap(vmm::pmlx_table *page_map, void *addr, size_t length, int prot, int f
         mmap_alloc(page_map, addr, length, flags);
         if(!(flags & map_anonymous)) {
             fs::fd &fd_back = fs::fd_list[fd]; 
-            if(fd_back.backing_fd != -1 && fd_back.status != 0) {
+            if(fd_back.backing_fd != -1 || fd_back.status != 0) {
                 fd_back.read(addr, length);
             } else {
                 fs::fd_list.remove(fd); 

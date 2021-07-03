@@ -1,10 +1,59 @@
 #include <fs/fd.hpp>
 #include <types.hpp>
 #include <string.hpp>
+#include <sched/smp.hpp>
+#include <sched/scheduler.hpp>
+#include <memutils.hpp>
+#include <utility>
+
+#define SYSCALL_FD_TRANSLATE(FD_INDEX) \
+    auto status = translate((FD_INDEX)); \
+    if(status.first == -1) { \
+        set_errno(ebadf); \
+        regs_cur->rax = -1; \
+        return -1; \
+    } \
 
 namespace fs {
 
-static size_t fd_cnt = 0;
+static fd &alloc_fd(lib::string path, int flags) {
+    smp::cpu &core = smp::core_local();
+    sched::task &current_task = sched::task_list[core.pid];
+
+    const auto index = [](sched::task &task) {
+        const auto find_index = [](sched::task &task, const auto &func) -> size_t {
+            for(size_t i = 0; i < task.fd_list.bitmap_size; i++) {
+                if(!bm_test(task.fd_list.bitmap, i)) {
+                    bm_set(task.fd_list.bitmap, i);
+                    return i;
+                }
+            }
+
+            task.fd_list.bitmap_size += 0x1000;
+            task.fd_list.bitmap = (uint8_t*)kmm::recalloc(task.fd_list.bitmap, task.fd_list.bitmap_size);
+
+            return func(task, func);
+        }; 
+
+        return find_index(task, find_index);
+    } (current_task);
+
+    return (fd_list[index] = fd(path, flags, index));
+}
+
+std::pair<ssize_t, fd&&> translate(int index) {
+    std::pair<ssize_t, fd&&> ret = { .first = -1, .second = fd() };
+
+    fd &backing = fd_list[index];
+
+    if(backing.backing_fd == -1 || backing.status == 0)
+        return ret;
+
+    ret.first = 0;
+    ret.second = backing;
+
+    return ret;
+}
 
 fd::fd(lib::string path, int flags, int backing_fd) : status(0), backing_fd(backing_fd) {
     auto open = [&, this]() {
@@ -40,8 +89,6 @@ fd::fd(lib::string path, int flags, int backing_fd) : status(0), backing_fd(back
     _flags = (size_t*)kmm::calloc(sizeof(size_t));
 
     status = 1;
-
-    fd_list[fd_cnt++] = *this;
 }
 
 int fd::read(void *buf, size_t cnt) {
@@ -96,10 +143,10 @@ int fd::seek(off_t off, int whence) {
 extern "C" int syscall_open(regs *regs_cur) {
     lib::string path((char*)regs_cur->rdi);
     int flags = regs_cur->rsi;
-    
-    fd &new_fd = (fd_list[fd_cnt] = fd(path, flags, fd_cnt));
 
-    regs_cur->rax = fd_cnt++;
+    fd &new_fd = alloc_fd(path, flags);
+
+    regs_cur->rax = new_fd.backing_fd;
 
     if(new_fd.status == 0) {
         regs_cur->rax = -1;
@@ -110,13 +157,7 @@ extern "C" int syscall_open(regs *regs_cur) {
 }
 
 extern "C" int syscall_close(regs *regs_cur) {
-    fd &backing = fd_list[regs_cur->rdi];
-
-    if(backing.backing_fd == -1) {
-        set_errno(ebadf);
-        regs_cur->rax = -1; 
-        return -1;
-    }
+    SYSCALL_FD_TRANSLATE(regs_cur->rdi);
 
     fd_list.remove(regs_cur->rdi);
 
@@ -124,45 +165,42 @@ extern "C" int syscall_close(regs *regs_cur) {
 }
 
 extern "C" int syscall_read(regs *regs_cur) {
-    fd &backing = fd_list[regs_cur->rdi];
+    SYSCALL_FD_TRANSLATE(regs_cur->rdi);
 
-    if(backing.backing_fd == -1) {
-        set_errno(ebadf);
-        regs_cur->rax = -1; 
-        return -1;
-    }
-
-    regs_cur->rax = backing.read((void*)regs_cur->rsi, regs_cur->rdx);
-
-    return regs_cur->rax;
+    return (regs_cur->rax = status.second.read((void*)regs_cur->rsi, regs_cur->rdx));
 }
 
 extern "C" int syscall_write(regs *regs_cur) {
-    fd &backing = fd_list[regs_cur->rdi];
+    SYSCALL_FD_TRANSLATE(regs_cur->rdi);
 
-    if(backing.backing_fd == -1) {
-        set_errno(ebadf);
-        regs_cur->rax = -1; 
-        return -1;
-    }
-
-    regs_cur->rax = backing.write((void*)regs_cur->rsi, regs_cur->rdx);
-
-    return regs_cur->rax;
+    return (regs_cur->rax = status.second.write((void*)regs_cur->rsi, regs_cur->rdx));
 }
 
 extern "C" int syscall_seek(regs *regs_cur) {
-    fd &backing = fd_list[regs_cur->rdi];
+    SYSCALL_FD_TRANSLATE(regs_cur->rdi);
 
-    if(backing.backing_fd == -1) {
-        set_errno(ebadf);
-        regs_cur->rax = -1; 
-        return -1;
-    }
+    return (regs_cur->rax = status.second.write((void*)regs_cur->rsi, regs_cur->rdx));
+}
 
-    regs_cur->rax = backing.write((void*)regs_cur->rsi, regs_cur->rdx);
+extern "C" int syscall_dup(regs *regs_cur) {
+    SYSCALL_FD_TRANSLATE(regs_cur->rdi);
 
-    return regs_cur->rax;
+    return (regs_cur->rax = alloc_fd(status.second.vfs_node->absolute_path, *status.second._flags).backing_fd); 
+}
+
+extern "C" int syscall_dup2(regs *regs_cur) {
+    if(regs_cur->rdi == regs_cur->rsi)
+        return regs_cur->rsi;
+
+    SYSCALL_FD_TRANSLATE(regs_cur->rdi);
+
+    auto new_fd_status = translate(regs_cur->rsi);
+    if(new_fd_status.first != -1)
+        fd_list.remove(regs_cur->rsi);
+
+    fd_list[regs_cur->rsi] = status.second;
+
+    return regs_cur->rsi;
 }
 
 }

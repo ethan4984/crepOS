@@ -346,13 +346,13 @@ void pml5_table::map_range(uint64_t vaddr, size_t cnt, size_t flags, ssize_t pa)
     if(flags & (1 << 7)) {
         for(size_t i = 0; i < cnt; i++) {
             virtual_address new_addr(highest_raw, vaddr);
-            new_addr.map(0x8, 0x3, 0x3, flags, 0, pa);
+            new_addr.map(0x3, 0x3, 0x3, flags, 0, pa);
             vaddr += 0x200000;
         }
     } else {
         for(size_t i = 0; i < cnt; i++) {
             virtual_address new_addr(highest_raw, vaddr);
-            new_addr.map(0x8, 0x3, 0x3, 0x3, flags, pa);
+            new_addr.map(0x3, 0x3, 0x3, 0x3, flags, pa);
             vaddr += 0x1000;
         }
     }
@@ -492,6 +492,26 @@ ssize_t set_pat() {
     return 0;
 }
 
+pmlx_table *pml4_table::create_generic() {
+    pmlx_table *table = new pml4_table;
+    table->highest_raw = reinterpret_cast<uint64_t*>(pmm::calloc(1) + high_vma);
+
+    table->highest_raw[256] = kernel_mapping->highest_raw[256];
+    table->highest_raw[511] = kernel_mapping->highest_raw[511];
+
+    return table;
+}
+
+pmlx_table *pml5_table::create_generic() {
+    pmlx_table *table = new pml5_table;
+    table->highest_raw = reinterpret_cast<uint64_t*>(pmm::calloc(1) + high_vma);
+
+    table->highest_raw[256] = kernel_mapping->highest_raw[256];
+    table->highest_raw[511] = kernel_mapping->highest_raw[511];
+
+    return table;
+}
+
 void init() {
     cpuid_state cpu_id = cpuid(7, 0);
 
@@ -505,19 +525,19 @@ void init() {
     
     size_t phys = 0;
     for(size_t i = 0; i < 0x200; i++) {
-        kernel_mapping->map_page_raw(phys + kernel_high_vma, phys, 0x3, 0x3 | (1 << 7) | (1 << 8), -1);
+        kernel_mapping->map_page_raw(phys + kernel_high_vma, phys, 0x3 | (1 << 2), 0x3 | (1 << 7) | (1 << 8) | (1 << 2), -1);
         phys += 0x200000;
     }
 
     phys = 0;
     for(size_t i = 0; i < pmm::total_mem / 0x200000; i++) {
-        kernel_mapping->map_page_raw(phys + high_vma, phys, 0x3, 0x3 | (1 << 7) | (1 << 8), -1);
+        kernel_mapping->map_page_raw(phys + high_vma, phys, 0x3 | (1 << 2), 0x3 | (1 << 7) | (1 << 8) | (1 << 2), -1);
         phys += 0x200000;
     }
 
     set_pat();
 
-    asm volatile ("mov %0, %%cr3" :: "r" (reinterpret_cast<uint64_t>(pml_highest) - high_vma) : "memory");
+    kernel_mapping->init();
 }
 
 }

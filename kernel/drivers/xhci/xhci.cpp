@@ -69,8 +69,8 @@ controller::controller(pci::device pci_device) : pci_device(pci_device) {
     for(size_t i = 0;;) {
         auto cap_id = extended_cap[i] & 0xff;
         auto next_cap = extended_cap[i] >> 8 & 0xff;
-        auto version_minor = extended_cap[i] >> 16 & 0xff;
-        auto version_major = extended_cap[i] >> 24 & 0xff;
+        //auto version_minor = extended_cap[i] >> 16 & 0xff;
+        //auto version_major = extended_cap[i] >> 24 & 0xff;
 
         switch(cap_id) {
             case 1:

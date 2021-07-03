@@ -3,6 +3,7 @@
 
 #include <mm/vmm.hpp>
 #include <string.hpp>
+#include <fs/fd.hpp>
 
 namespace elf {
 
@@ -70,7 +71,7 @@ struct elf64_shdr {
 };
 
 struct file {
-    file(vmm::pmlx_table *page_map, aux *aux_cur, int fd, uint64_t base, lib::string **ld_path);
+    file(vmm::pmlx_table *page_map, aux *aux_cur, fs::fd &file, uint64_t base, lib::string **ld_path);
 
     struct [[gnu::packed]] {
         uint8_t ident[16];

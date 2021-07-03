@@ -43,12 +43,19 @@ struct task {
     size_t idle_cnt;
     size_t status;
     lib::map<ssize_t, thread> threads;
-    lib::map<ssize_t, int> fds;
+
+    struct {
+        uint8_t *bitmap;
+        size_t bitmap_size;
+    } fd_list;
+
+    size_t file_descriptor_bitmap_size;
     vmm::pmlx_table *page_map;
 };
 
 ssize_t create_task(ssize_t pid, vmm::pmlx_table *page_map);
 ssize_t create_thread(ssize_t ppid, uint64_t rip, uint16_t cs, elf::aux *aux, const char **argv, const char **envp);
+ssize_t sched_task(lib::string path, uint16_t cs, const char **argv, const char **envp);
 void reschedule(regs *regs_cur);
 
 inline size_t scheduler_lock = 0;

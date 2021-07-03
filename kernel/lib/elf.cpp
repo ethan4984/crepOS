@@ -1,18 +1,11 @@
 #include <elf.hpp>
-#include <fs/fd.hpp>
 #include <mm/mmap.hpp>
 
 namespace elf {
 
-file::file(vmm::pmlx_table *page_map, aux *aux_cur, int fd, uint64_t base, lib::string **ld_path) {
-    fs::fd &fd_back = fs::fd_list[fd];
-    if(fd_back.backing_fd == -1 || fd_back.status == 0) {
-        fs::fd_list.remove(fd);
-        return;
-    }
-            
+file::file(vmm::pmlx_table *page_map, aux *aux_cur, fs::fd &file, uint64_t base, lib::string **ld_path) {
     auto elf_status = [&, this]() {
-        fd_back.read((void*)&hdr, sizeof(hdr));
+        file.read((void*)&hdr, sizeof(hdr));
 
         if(*(uint32_t*)&hdr != elf_signature) 
             return -1;
@@ -30,8 +23,8 @@ file::file(vmm::pmlx_table *page_map, aux *aux_cur, int fd, uint64_t base, lib::
 
     elf64_phdr *phdr = new elf64_phdr[hdr.ph_num];
 
-    fd_back.seek(hdr.phoff, seek_set);
-    fd_back.read(phdr, sizeof(elf64_phdr) * hdr.ph_num);
+    file.seek(hdr.phoff, seek_set);
+    file.read(phdr, sizeof(elf64_phdr) * hdr.ph_num);
 
     aux_cur->at_phdr = 0;
     aux_cur->at_phent = sizeof(elf64_phdr);
@@ -45,8 +38,8 @@ file::file(vmm::pmlx_table *page_map, aux *aux_cur, int fd, uint64_t base, lib::
             *ld_path = new lib::string;
             char *path = (char*)kmm::calloc(phdr[i].p_filesz + 1);
 
-            fd_back.seek(phdr[i].p_offset, seek_set);
-            fd_back.read(path, phdr[i].p_filesz);
+            file.seek(phdr[i].p_offset, seek_set);
+            file.read(path, phdr[i].p_filesz);
 
             **ld_path = lib::string(path);
             delete path;
@@ -64,8 +57,8 @@ file::file(vmm::pmlx_table *page_map, aux *aux_cur, int fd, uint64_t base, lib::
 
         mm::mmap(page_map, (void*)(phdr[i].p_vaddr + base), page_cnt * vmm::page_size, 0x3 | (1 << 2), mm::map_anonymous | mm::map_fixed, 0, 0);
 
-        fd_back.seek(phdr[i].p_offset, seek_set);
-        fd_back.read((void*)(phdr[i].p_vaddr + base), phdr[i].p_filesz);
+        file.seek(phdr[i].p_offset, seek_set);
+        file.read((void*)(phdr[i].p_vaddr + base), phdr[i].p_filesz);
     }
 
     aux_cur->at_entry = base + hdr.entry;

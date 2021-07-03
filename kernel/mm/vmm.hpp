@@ -188,6 +188,8 @@ struct pmlx_table {
     virtual void map_page(uint64_t vaddr, uint64_t flags, ssize_t pa) = 0;
     virtual void unmap_page(uint64_t vaddr) = 0;
 
+    virtual pmlx_table *create_generic() = 0;
+
     void init() {
         asm volatile ("mov %0, %%cr3" :: "r" (reinterpret_cast<uint64_t>(highest_raw) - high_vma) : "memory");
     }
@@ -209,6 +211,8 @@ struct pml4_table : pmlx_table {
     void map_page_raw(uint64_t vaddr, uint64_t paddr, uint64_t flags1, uint64_t flags0, ssize_t pa);
     void map_page(uint64_t vaddr, uint64_t flags, ssize_t pa);
     void unmap_page(uint64_t vaddr);
+
+    pmlx_table *create_generic();
 
     class virtual_address {
     public:
@@ -260,6 +264,8 @@ struct pml5_table : pmlx_table {
     void map_page(uint64_t vaddr, uint64_t flags, ssize_t pa);
     void unmap_page(uint64_t vaddr);
 
+    pmlx_table *create_generic();
+
     class virtual_address {
     public:
         virtual_address(uint64_t *pml5_raw, uint64_t vaddr, uint64_t paddr);
@@ -302,6 +308,8 @@ struct pml5_table : pmlx_table {
         uint64_t *pml1_raw;
     };
 };
+
+pmlx_table *create_generic_map();
 
 inline uint64_t get_pml4() {
     uint64_t pml4;
