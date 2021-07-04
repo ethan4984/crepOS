@@ -28,12 +28,12 @@ struct cache {
     size_t active_slabs;
     size_t pages_per_slab;
 
-    cache *next;
-    cache *last;
-
     slab *slab_empty;
     slab *slab_partial; 
     slab *slab_full;
+
+    cache *next;
+    cache *last;
 };
 
 struct slab {

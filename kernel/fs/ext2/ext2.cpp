@@ -137,7 +137,7 @@ int fs::refresh_node(inode &inode_cur, lib::string mount_gate) {
 
     for(uint32_t i = 0; i < inode_cur.raw.size32l;) { 
         raw_dir *dir_cur = reinterpret_cast<raw_dir*>(buffer + i);
-
+        
         lib::string name(reinterpret_cast<char*>(dir_cur->name), dir_cur->name_length);
         lib::string absolute_path = mount_gate + name;
 
@@ -145,8 +145,10 @@ int fs::refresh_node(inode &inode_cur, lib::string mount_gate) {
             vfs::node(absolute_path, NULL); 
 
             uint32_t expected_size = align_up(sizeof(raw_dir) + dir_cur->name_length, 4);
-            if(dir_cur->entry_size != expected_size)
+            if(dir_cur->entry_size != expected_size) {
+                delete buffer;
                 return -1;
+            }
 
             i += dir_cur->entry_size;
 
@@ -154,7 +156,7 @@ int fs::refresh_node(inode &inode_cur, lib::string mount_gate) {
         }
 
         inode new_inode(this, dir_cur->inode);
-    
+
         if(new_inode.raw.permissions & 0x4000) { // is a directory
             lib::string directory_path = absolute_path + "/";
             vfs::node(directory_path, NULL); 
@@ -162,10 +164,12 @@ int fs::refresh_node(inode &inode_cur, lib::string mount_gate) {
         } else {
             vfs::node(absolute_path, NULL); 
         }
-        
+
         uint32_t expected_size = align_up(sizeof(raw_dir) + dir_cur->name_length, 4);
-        if(dir_cur->entry_size != expected_size)
-            return -1; 
+        if(dir_cur->entry_size != expected_size) {
+            delete buffer;
+            return -1;
+        }
 
         i += dir_cur->entry_size;
     }

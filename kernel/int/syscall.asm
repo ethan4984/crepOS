@@ -51,6 +51,7 @@ extern syscall_set_fs_base
 extern syscall_set_gs_base
 extern syscall_get_fs_base
 extern syscall_get_gs_base
+extern syscall_syslog
 
 syscall_list:
 
@@ -67,6 +68,7 @@ dq syscall_set_fs_base
 dq syscall_set_gs_base
 dq syscall_get_fs_base
 dq syscall_get_gs_base
+dq syscall_syslog
 
 .end:
 

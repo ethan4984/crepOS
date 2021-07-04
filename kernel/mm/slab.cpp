@@ -30,7 +30,7 @@ static slab *alloc_slab(cache *parent) {
 }
 
 cache::cache(const char *name, size_t flags, size_t object_size) : name(name), flags(flags), object_size(object_size) {
-    pages_per_slab = div_roundup(object_size * objects_per_slab, vmm::page_size);
+    pages_per_slab = div_roundup(object_size * objects_per_slab + sizeof(slab) + objects_per_slab / 8, vmm::page_size);
 
     slab *root_slab = alloc_slab(this);
 

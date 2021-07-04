@@ -77,6 +77,7 @@ extern "C" void isr_handler_main(regs *regs_cur) {
         print("[KDEBUG] r8:  {x} | r9:  {x} | r10: {x} | r11: {x}\n", regs_cur->r8, regs_cur->r9, regs_cur->r10, regs_cur->r11);
         print("[KDEBUG] r12: {x} | r13: {x} | r14: {x} | r15: {x}\n", regs_cur->r12, regs_cur->r13, regs_cur->r14, regs_cur->r15); 
         print("[KDEBUG] cs:  {x} | ss:  {x} | cr2: {x} | rip: {x}\n", regs_cur->cs, regs_cur->ss, cr2, regs_cur->rip);
+        print("[KDEBUG] Total memory in use: {x}\n", pmm::total_used_mem);
 
         spin_release(&lock);
 

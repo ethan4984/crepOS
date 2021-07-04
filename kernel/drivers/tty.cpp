@@ -240,3 +240,7 @@ tty::tty(screen &sc, uint8_t *font, size_t font_height, size_t font_width) :
 }
 
 }
+
+extern "C" void syscall_syslog(regs *regs_cur) {
+    print("{}\n", (char*)regs_cur->rdi);
+}

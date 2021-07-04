@@ -59,6 +59,7 @@ file::file(vmm::pmlx_table *page_map, aux *aux_cur, fs::fd &file, uint64_t base,
 
         file.seek(phdr[i].p_offset, seek_set);
         file.read((void*)(phdr[i].p_vaddr + base), phdr[i].p_filesz);
+
     }
 
     aux_cur->at_entry = base + hdr.entry;

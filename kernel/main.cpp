@@ -34,6 +34,16 @@ void kernel_thread() {
 
     vfs::mount("/dev/sd0-0", "/");
 
+    const char *argv[] = { "/test", NULL };
+    const char *envp[] = { 
+        "HOME=/",
+        "PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+        "TERM=linux",
+        NULL
+    };
+
+    sched::sched_task("/bruh", 0x23, argv, envp);
+
     for(;;)
         asm ("pause");
 }

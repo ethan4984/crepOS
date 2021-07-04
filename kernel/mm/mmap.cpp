@@ -84,8 +84,6 @@ void *mmap(vmm::pmlx_table *page_map, void *addr, size_t length, int prot, int f
             addr = mmap_alloc(page_map, addr, length, flags);
         }
 
-        print("Mapping address {x} page_cnt {x}\n", (size_t)addr, page_cnt); 
-
         page_map->map_range((size_t)addr, page_cnt, prot, prot);
     }
 

@@ -113,6 +113,7 @@ size_t mem_chunk::alloc(size_t cnt, size_t align) {
                 for(size_t z = 0; z < count; z++)
                     bm_set(bitmap, i + z);
                 spin_release(&pmm_lock);
+                total_used_mem += cnt * vmm::page_size;
                 return alloc_base;
             }
         }
@@ -125,6 +126,7 @@ size_t mem_chunk::alloc(size_t cnt, size_t align) {
 void mem_chunk::free(size_t base, size_t cnt) {
     spin_lock(&pmm_lock);
     for(size_t i = div_roundup(base, vmm::page_size); i < div_roundup(base, vmm::page_size) + cnt; i++) {
+        total_used_mem -= vmm::page_size;
         bm_clear(bitmap, i);
     }
     spin_release(&pmm_lock);
@@ -160,8 +162,9 @@ size_t calloc(size_t cnt, size_t align) {
 void free(size_t base, size_t cnt) {
     mem_chunk *chunk = root;
     do {
-        if(base >= chunk->base && (base + cnt * vmm::page_size) <= (chunk->base + chunk->page_cnt * vmm::page_size))
+        if(base >= chunk->base && (base + cnt * vmm::page_size) <= (chunk->base + chunk->page_cnt * vmm::page_size)) {
             return chunk->free(base - chunk->base, cnt);
+        }
         chunk = chunk->next;
     } while(chunk != NULL);
 }
